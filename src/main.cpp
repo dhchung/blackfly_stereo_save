@@ -6,9 +6,15 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/String.h>
 #include <string>
+
+//Time Check
 #include <chrono>
 // Create directory
 #include <sys/stat.h>
+// Threading
+#include <thread>
+#include <future>
+#include <atomic>
 
 #include "camera.h"
 
@@ -21,6 +27,11 @@ std::string stop_logging_msg = "Stoplogging";
 std::string dir_name;
 std::string dir_name_left;
 std::string dir_name_right;
+
+std::vector<std::thread> threads(30);
+std::vector<bool> running_check(30, false);
+
+std::vector<int> compression_params;
 
 int data_no = 0;
 
@@ -40,6 +51,16 @@ void dataLoggingFlagCallback(const std_msgs::Bool::ConstPtr &msg){
         if(data_logging){
             data_logging = false;
             ROS_INFO("Data Logging Set False");
+
+            for(int i = 0; i < threads.size(); ++i) {
+                if(threads[i].joinable()) {
+                    threads[i].join();
+                }
+            }
+
+            threads.clear();
+            running_check.clear();
+
         }
     }
 }
@@ -53,9 +74,13 @@ void dataPrefixCallBack(const std_msgs::String::ConstPtr & msg) {
             dir_name_left = dir_name + "/stereoleft";
             dir_name_right = dir_name + "/stereoright";
 
-            int mkdir_status = mkdir(dir_name.c_str(), 0777);
-            int mkdir_status_left = mkdir(dir_name_left.c_str(), 0777);
-            int mkdir_status_right = mkdir(dir_name_right.c_str(), 0777);
+            // int mkdir_status = mkdir(dir_name.c_str(), 0777);
+            // int mkdir_status_left = mkdir(dir_name_left.c_str(), 0777);
+            // int mkdir_status_right = mkdir(dir_name_right.c_str(), 0777);
+
+            mkdir(dir_name.c_str(), 0777);
+            mkdir(dir_name_left.c_str(), 0777);
+            mkdir(dir_name_right.c_str(), 0777);
 
             std::string timestampPath = dir_name + "/timestamp.txt";
             ptr_time = fopen(timestampPath.c_str(), "a");
@@ -72,25 +97,45 @@ void dataPrefixCallBack(const std_msgs::String::ConstPtr & msg) {
     }
 }
 
+void save_image(std::vector<cv::Mat> image, 
+                std::string filename_left, 
+                std::string filename_right,
+                int thread_no) {
+    running_check[thread_no] = true;
+    // cv::resize(image[0], image[0], cv::Size(image[0].rows/2, image[0].cols/2));
+    // cv::resize(image[1], image[1], cv::Size(image[1].rows/2, image[1].cols/2));
+
+
+    cv::imwrite(std::string(filename_left), image[0], compression_params);
+    cv::imwrite(std::string(filename_right), image[1], compression_params);
+    running_check[thread_no] = false;
+}
 
 int main(int argc, char ** argv) {
     data_no = 0;
     data_logging = false;
 
+    compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    compression_params.push_back(100);
+
     Camera cam;
     ros::init(argc, argv, "send_image");
 
     ros::NodeHandle nh;
-    image_transport::ImageTransport it_1(nh);
-    image_transport::ImageTransport it_2(nh);
+    // image_transport::ImageTransport it_1(nh);
+    // image_transport::ImageTransport it_2(nh);
 
-    image_transport::Publisher pub_1 = it_1.advertise("camera1/image", 1);
-    image_transport::Publisher pub_2 = it_2.advertise("camera2/image", 1);
+    // image_transport::Publisher pub_1 = it_1.advertise("camera1/image", 1);
+    // image_transport::Publisher pub_2 = it_2.advertise("camera2/image", 1);
 
     ros::Subscriber sub_bool = nh.subscribe("/datalogging", 1, dataLoggingFlagCallback);
     ros::Subscriber sub_prefix = nh.subscribe("/save_prefix", 1, dataPrefixCallBack);
 
     ros::Rate loop_rate(200);
+
+    // std::vector<std::atomic<bool>> running_check;
+
+    int thread_num = 0;
 
     while(ros::ok()){
 
@@ -122,10 +167,49 @@ int main(int argc, char ** argv) {
                 char filename_right[256];
                 sprintf( filename_right, "%s/Image%06d_raw.png",dir_name_right.c_str(), data_no);
 
+                bool all_thread_running = true;
+                int empty_thread = -1;
+                for(int i = 0; i < thread_num; ++i) {
+                    // if(!threads[i].joinable()) {
+                    
+                    if(running_check[i]){
 
-                cv::imwrite(std::string(filename_left), acquired_image[0]);
-                cv::imwrite(std::string(filename_right), acquired_image[1]);
 
+                    } else{
+                        empty_thread = i;
+                        all_thread_running = false;
+                        // std::cout<<"Thread "<<i<<" Available"<<std::endl;
+                        if(threads[i].joinable()){
+                            threads[i].join();
+                        }
+                    }
+                }
+
+                if(all_thread_running) {
+                    running_check.push_back(false);
+                    threads.emplace_back(save_image, 
+                                         acquired_image, 
+                                         filename_left,
+                                         filename_right,
+                                         running_check.size()-1);
+                    threads[running_check.size()-1].detach();
+                    ++thread_num;
+                } else {
+                    threads[empty_thread] = std::thread(save_image, 
+                                                        acquired_image,
+                                                        filename_left,
+                                                        filename_right,
+                                                        empty_thread);
+                    threads[empty_thread].detach();    
+                }
+
+                int num_running_thread = 0;
+                for(int i = 0; i < running_check.size(); ++i) {
+                    if(running_check[i]) {
+                        ++num_running_thread;
+                    }
+                }
+                std::cout<<"running thread"<<num_running_thread<<std::endl;
                 std::cout<<data_no<<std::endl;
 
                 ++data_no;
@@ -136,6 +220,11 @@ int main(int argc, char ** argv) {
         loop_rate.sleep();
 
     }
+
+    for(int i = 0; i<threads.size(); ++i) {
+        threads[i].join();
+    }
+
     return 0;
 }
 
