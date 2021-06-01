@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-#include <image_transport/image_transport.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
@@ -74,10 +73,6 @@ void dataPrefixCallBack(const std_msgs::String::ConstPtr & msg) {
             dir_name_left = dir_name + "/stereoleft";
             dir_name_right = dir_name + "/stereoright";
 
-            // int mkdir_status = mkdir(dir_name.c_str(), 0777);
-            // int mkdir_status_left = mkdir(dir_name_left.c_str(), 0777);
-            // int mkdir_status_right = mkdir(dir_name_right.c_str(), 0777);
-
             mkdir(dir_name.c_str(), 0777);
             mkdir(dir_name_left.c_str(), 0777);
             mkdir(dir_name_right.c_str(), 0777);
@@ -102,9 +97,6 @@ void save_image(std::vector<cv::Mat> image,
                 std::string filename_right,
                 int thread_no) {
     running_check[thread_no] = true;
-    // cv::resize(image[0], image[0], cv::Size(image[0].rows/2, image[0].cols/2));
-    // cv::resize(image[1], image[1], cv::Size(image[1].rows/2, image[1].cols/2));
-
 
     cv::imwrite(std::string(filename_left), image[0], compression_params);
     cv::imwrite(std::string(filename_right), image[1], compression_params);
@@ -122,19 +114,22 @@ int main(int argc, char ** argv) {
     ros::init(argc, argv, "send_image");
 
     ros::NodeHandle nh;
-    // image_transport::ImageTransport it_1(nh);
-    // image_transport::ImageTransport it_2(nh);
-
-    // image_transport::Publisher pub_1 = it_1.advertise("camera1/image", 1);
-    // image_transport::Publisher pub_2 = it_2.advertise("camera2/image", 1);
 
     ros::Subscriber sub_bool = nh.subscribe("/datalogging", 1, dataLoggingFlagCallback);
     ros::Subscriber sub_prefix = nh.subscribe("/save_prefix", 1, dataPrefixCallBack);
 
+    // cv_bridge::CvImage img_bridge;
+
+    // sensor_msgs::Image img1;
+    // sensor_msgs::Image img2;
+    // std_msgs::Header header;
+
+    // ros::Publisher pub_img1 = nh.advertise<sensor_msgs::Image>("camera1/image", 1);
+    // ros::Publisher pub_img2 = nh.advertise<sensor_msgs::Image>("camera2/image", 1);
+
+    // int count = 0;
+
     ros::Rate loop_rate(200);
-
-    // std::vector<std::atomic<bool>> running_check;
-
     int thread_num = 0;
 
     while(ros::ok()){
@@ -142,15 +137,15 @@ int main(int argc, char ** argv) {
         // Acquire Images
         std::vector<cv::Mat> acquired_image =  cam.acquire_image();
 
-        // sensor_msgs::ImagePtr msg_1 = cv_bridge::CvImage(std_msgs::Header(), "bgr8", acquired_image[0]).toImageMsg();
-        // sensor_msgs::ImagePtr msg_2 = cv_bridge::CvImage(std_msgs::Header(), "bgr8", acquired_image[1]).toImageMsg();
+        // header.seq = count;
+        // header.stamp = ros::Time::now();
+        // img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, acquired_image[0]);
+        // img_bridge.toImageMsg(img1);
+        // img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, acquired_image[1]);
+        // img_bridge.toImageMsg(img2);
 
-        // pub_1.publish(msg_1);
-        // pub_2.publish(msg_2);
-
-
-
-        // cam.show_image(acquired_image[0]);
+        // pub_img1.publish(img1);
+        // pub_img2.publish(img2);
 
         if(data_logging) {
             if(data_prefix.compare(stop_logging_msg)!=0) {
@@ -170,15 +165,11 @@ int main(int argc, char ** argv) {
                 bool all_thread_running = true;
                 int empty_thread = -1;
                 for(int i = 0; i < thread_num; ++i) {
-                    // if(!threads[i].joinable()) {
-                    
                     if(running_check[i]){
-
 
                     } else{
                         empty_thread = i;
                         all_thread_running = false;
-                        // std::cout<<"Thread "<<i<<" Available"<<std::endl;
                         if(threads[i].joinable()){
                             threads[i].join();
                         }
@@ -216,8 +207,10 @@ int main(int argc, char ** argv) {
             }
         }
 
+
         ros::spinOnce();
         loop_rate.sleep();
+        // ++count;
 
     }
 
