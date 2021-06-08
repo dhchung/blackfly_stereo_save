@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>blackfly_stereo</name>
+  <name>blackfly_stereo_save</name>
   <version>0.0.0</version>
-  <description>The blackfly_stereo test</description>
+  <description>Blackfly stereo image logging node</description>
 
   <maintainer email="haetae.dongha@gmail.com">donghachung</maintainer>
   <license>TODO</license>

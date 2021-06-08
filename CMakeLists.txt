@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(blackfly_stereo)
+project(blackfly_stereo_save)
 
 find_package(catkin REQUIRED COMPONENTS
 	cv_bridge
@@ -27,11 +27,11 @@ if(EXISTS "/opt/spinnaker")
 		${catkin_INCLUDE_DIRS}
 		${OpenCV_INCLUDE_DIRS}
 	)
-	add_executable(send_image 
+	add_executable(save_image 
 				   src/main.cpp
 				   ${CLASS_SOURCES})
 
-	target_link_libraries(send_image
+	target_link_libraries(save_image
                           ${catkin_LIBRARIES} 
                           ${SPINNAKER_LIBRARIES} 
                           ${OpenCV_LIBRARIES})

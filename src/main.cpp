@@ -17,7 +17,7 @@
 
 #include "camera.h"
 
-#define PREFIX_PATH "/mnt/DataDisk/"
+#define PREFIX_PATH "/home/morin/Dataset/"
 
 
 bool data_logging;
@@ -111,7 +111,7 @@ int main(int argc, char ** argv) {
     compression_params.push_back(100);
 
     Camera cam;
-    ros::init(argc, argv, "send_image");
+    ros::init(argc, argv, "save_image");
 
     ros::NodeHandle nh;
 
