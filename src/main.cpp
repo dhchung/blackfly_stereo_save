@@ -12,8 +12,6 @@
 #include <sys/stat.h>
 // Threading
 #include <thread>
-#include <future>
-#include <atomic>
 
 #include "camera.h"
 
