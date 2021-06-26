@@ -15,7 +15,7 @@
 
 #include "camera.h"
 
-#define PREFIX_PATH "/home/morin/Dataset/"
+#define PREFIX_PATH "/mnt/DataDisk/"
 
 
 bool data_logging;
@@ -49,7 +49,7 @@ void dataLoggingFlagCallback(const std_msgs::Bool::ConstPtr &msg){
             data_logging = false;
             ROS_INFO("Data Logging Set False");
 
-            for(int i = 0; i < threads.size(); ++i) {
+            for(size_t i = 0; i < threads.size(); ++i) {
                 if(threads[i].joinable()) {
                     threads[i].join();
                 }
@@ -96,17 +96,17 @@ void save_image(std::vector<cv::Mat> image,
                 int thread_no) {
     running_check[thread_no] = true;
 
-    cv::imwrite(std::string(filename_left), image[0], compression_params);
-    cv::imwrite(std::string(filename_right), image[1], compression_params);
+    // cv::imwrite(std::string(filename_left), image[0], compression_params);
+    // cv::imwrite(std::string(filename_right), image[1], compression_params);
+    cv::imwrite(std::string(filename_left), image[0]);
+    cv::imwrite(std::string(filename_right), image[1]);
+
     running_check[thread_no] = false;
 }
 
 int main(int argc, char ** argv) {
     data_no = 0;
     data_logging = false;
-
-    compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
-    compression_params.push_back(100);
 
     Camera cam;
     ros::init(argc, argv, "save_image");
@@ -116,17 +116,6 @@ int main(int argc, char ** argv) {
     ros::Subscriber sub_bool = nh.subscribe("/datalogging", 1, dataLoggingFlagCallback);
     ros::Subscriber sub_prefix = nh.subscribe("/save_prefix", 1, dataPrefixCallBack);
 
-    // cv_bridge::CvImage img_bridge;
-
-    // sensor_msgs::Image img1;
-    // sensor_msgs::Image img2;
-    // std_msgs::Header header;
-
-    // ros::Publisher pub_img1 = nh.advertise<sensor_msgs::Image>("camera1/image", 1);
-    // ros::Publisher pub_img2 = nh.advertise<sensor_msgs::Image>("camera2/image", 1);
-
-    // int count = 0;
-
     ros::Rate loop_rate(200);
     int thread_num = 0;
 
@@ -134,16 +123,6 @@ int main(int argc, char ** argv) {
 
         // Acquire Images
         std::vector<cv::Mat> acquired_image =  cam.acquire_image();
-
-        // header.seq = count;
-        // header.stamp = ros::Time::now();
-        // img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, acquired_image[0]);
-        // img_bridge.toImageMsg(img1);
-        // img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, acquired_image[1]);
-        // img_bridge.toImageMsg(img2);
-
-        // pub_img1.publish(img1);
-        // pub_img2.publish(img2);
 
         if(data_logging) {
             if(data_prefix.compare(stop_logging_msg)!=0) {
@@ -193,7 +172,7 @@ int main(int argc, char ** argv) {
                 }
 
                 int num_running_thread = 0;
-                for(int i = 0; i < running_check.size(); ++i) {
+                for(size_t i = 0; i < running_check.size(); ++i) {
                     if(running_check[i]) {
                         ++num_running_thread;
                     }
@@ -212,7 +191,7 @@ int main(int argc, char ** argv) {
 
     }
 
-    for(int i = 0; i<threads.size(); ++i) {
+    for(size_t i = 0; i<threads.size(); ++i) {
         threads[i].join();
     }
 

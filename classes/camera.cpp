@@ -3,7 +3,6 @@
 
 Camera::Camera(){
     system = Spinnaker::System::GetInstance();
-
     cam_1_serial = "20515474"; // Primary Camera
     cam_2_serial = "21102408"; // Secondary Camera
     camera_ready = false;
@@ -37,12 +36,14 @@ void Camera::set_camera(){
     const unsigned int numCameras = camList.GetSize();
     std::cout<<"Number of cameras detected: "<<numCameras<<std::endl;
 
-    if(numCameras != 2) {
+    cam_1 = camList.GetBySerial(cam_1_serial);
+    cam_2 = camList.GetBySerial(cam_2_serial);
+
+
+    if(!cam_1.IsValid() || !cam_2.IsValid()) {
         camera_ready = false;
     } else {
         camera_ready = true;
-        cam_1 = camList.GetBySerial(cam_1_serial);
-        cam_2 = camList.GetBySerial(cam_2_serial);
 
         cam_1->DeInit();
         cam_2->DeInit();
@@ -148,11 +149,11 @@ void Camera::set_camera(){
 
 
 
-        ptrHandlingModeEntry_1 = ptrHandlingMode_1->GetEntryByName("NewestFirst");
+        ptrHandlingModeEntry_1 = ptrHandlingMode_1->GetEntryByName("NewestOnly");
         ptrHandlingMode_1->SetIntValue(ptrHandlingModeEntry_1->GetValue());
         std::cout << "Buffer Handling Mode has been set to " << ptrHandlingModeEntry_1->GetDisplayName() << std::endl;
 
-        ptrHandlingModeEntry_2 = ptrHandlingMode_2->GetEntryByName("NewestFirst");
+        ptrHandlingModeEntry_2 = ptrHandlingMode_2->GetEntryByName("NewestOnly");
         ptrHandlingMode_2->SetIntValue(ptrHandlingModeEntry_2->GetValue());
         std::cout << "Buffer Handling Mode has been set to " << ptrHandlingModeEntry_2->GetDisplayName() << std::endl;
 
@@ -164,11 +165,16 @@ void Camera::set_camera(){
 
 std::vector<cv::Mat> Camera::acquire_image(){
 
+    std::vector<cv::Mat> image_vector;
+    if(!camera_ready){
+        std::cout<<"Camera is not ready"<<std::endl;
+        return image_vector;
+    }
+
     Spinnaker::ImagePtr img1 = cam_1->GetNextImage();
     Spinnaker::ImagePtr img2 = cam_2->GetNextImage();
 
 
-    std::vector<cv::Mat> image_vector;
     image_vector.resize(2);
 
     if (img1->IsIncomplete())
@@ -213,7 +219,6 @@ std::vector<cv::Mat> Camera::acquire_image(){
 }
 
 void Camera::show_image(cv::Mat & img){
-
     imshow("asdf", img);
     cv::waitKey(1);
 }
