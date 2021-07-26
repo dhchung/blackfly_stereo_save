@@ -1,5 +1,5 @@
 #include "camera.h"
-
+#include <ros/ros.h>
 
 Camera::Camera(){
     system = Spinnaker::System::GetInstance();
@@ -116,9 +116,6 @@ void Camera::set_camera(){
         ptrFrameRate_2->SetValue(frameRate);
         std::cout << "Camera 2 Frame rate is set to " << frameRate << std::endl;
 
-
-
-
         Spinnaker::GenApi::INodeMap& sNodeMap_1 = cam_1->GetTLStreamNodeMap();
         Spinnaker::GenApi::INodeMap& sNodeMap_2 = cam_2->GetTLStreamNodeMap();
 
@@ -163,17 +160,18 @@ void Camera::set_camera(){
 }
 
 
-std::vector<cv::Mat> Camera::acquire_image(){
+std::vector<cv::Mat> Camera::acquire_image(double & time, bool & img_ok){
 
     std::vector<cv::Mat> image_vector;
     if(!camera_ready){
         std::cout<<"Camera is not ready"<<std::endl;
+        img_ok = false;
         return image_vector;
     }
+    img_ok = true;
 
     Spinnaker::ImagePtr img1 = cam_1->GetNextImage();
     Spinnaker::ImagePtr img2 = cam_2->GetNextImage();
-
 
     image_vector.resize(2);
 
@@ -188,6 +186,8 @@ std::vector<cv::Mat> Camera::acquire_image(){
         return image_vector;
     }
 
+    time = ros::Time::now().toSec();
+
     const size_t width_1 = img1->GetWidth();
     const size_t height_1 = img1->GetHeight();
     Spinnaker::ImagePtr convertedImage_1 = img1->Convert(Spinnaker::PixelFormat_BGR8, Spinnaker::BILINEAR);
@@ -198,6 +198,10 @@ std::vector<cv::Mat> Camera::acquire_image(){
     const size_t height_2 = img2->GetHeight();
     Spinnaker::ImagePtr convertedImage_2 = img2->Convert(Spinnaker::PixelFormat_BGR8, Spinnaker::BILINEAR);
     cv::Mat imgMat_2 = cv::Mat(cv::Size(width_2, height_2), CV_8UC3, convertedImage_2->GetData());
+
+    // cv::rotate(imgMat_1, imgMat_1, cv::ROTATE_180);
+    // cv::rotate(imgMat_2, imgMat_2, cv::ROTATE_180);
+
 
 
     // I don't know what the f**k is going on, but it doesn't work if i don't do this

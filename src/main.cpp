@@ -111,7 +111,28 @@ int main(int argc, char ** argv) {
     Camera cam;
     ros::init(argc, argv, "save_image");
 
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("~");
+
+    bool image_show = false;
+    bool ros_param_image_show;
+    bool params_passed = nh.getParam("image_show", ros_param_image_show);    
+
+    if(!params_passed) {
+        std::cout<<"Input should be either true or false"<<std::endl;
+        std::cout<<"ex) $ rosrun blackfly_stereo_save save_image"<<std::endl;
+        std::cout<<"ex) $ rosrun blackfly_stereo_save save_image _image_show:=true"<<std::endl;
+        std::cout<<"ex) $ rosrun blackfly_stereo_save save_image _image_show:=false"<<std::endl;
+        std::cout<<"Image show is set to false by default"<<std::endl;
+        image_show = false;
+    } else {
+        if(ros_param_image_show) {
+            std::cout<<"Image show is set to true"<<std::endl;
+            image_show = true;
+        } else {
+            std::cout<<"Image show is set to false"<<std::endl;
+            image_show = false;
+        }
+    }
 
     ros::Subscriber sub_bool = nh.subscribe("/datalogging", 1, dataLoggingFlagCallback);
     ros::Subscriber sub_prefix = nh.subscribe("/save_prefix", 1, dataPrefixCallBack);
@@ -122,12 +143,15 @@ int main(int argc, char ** argv) {
     while(ros::ok()){
 
         // Acquire Images
-        std::vector<cv::Mat> acquired_image =  cam.acquire_image();
+        bool img_ok = false;
+        double time;
+        std::vector<cv::Mat> acquired_image =  cam.acquire_image(time, img_ok);
 
-        if(data_logging) {
+        if(data_logging && img_ok) {
             if(data_prefix.compare(stop_logging_msg)!=0) {
                 char timestamp_buf[256];
-                sprintf(timestamp_buf, "%06d\t%f\n", data_no, ros::Time::now().toSec());
+                // sprintf(timestamp_buf, "%06d\t%f\n", data_no, ros::Time::now().toSec());
+                sprintf(timestamp_buf, "%06d\t%f\n", data_no, time);
 
                 fwrite(timestamp_buf, 1, strlen(timestamp_buf), ptr_time);
 
@@ -177,11 +201,24 @@ int main(int argc, char ** argv) {
                         ++num_running_thread;
                     }
                 }
-                std::cout<<"running thread"<<num_running_thread<<std::endl;
-                std::cout<<data_no<<std::endl;
+                std::cout<<"[STEREO CAMERA]"<<std::endl;
+                std::cout<<"running thread: "<<num_running_thread<<std::endl;
+                std::cout<<"data no.: "<<data_no<<std::endl;
 
                 ++data_no;
             }
+        }
+
+        if(image_show && img_ok) {
+            cv::Mat img_concat;
+            cv::Mat img1 = acquired_image[0];
+            cv::Mat img2 = acquired_image[1];
+            cv::resize(img1, img1, cv::Size(img1.cols/4, img1.rows/4));
+            cv::resize(img2, img2, cv::Size(img2.cols/4, img2.rows/4));
+
+            cv::vconcat(img1, img2, img_concat);
+            cv::imshow("Stereo images", img_concat);
+            cv::waitKey(1);
         }
 
 
