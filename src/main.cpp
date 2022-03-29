@@ -151,7 +151,7 @@ int main(int argc, char ** argv) {
             if(data_prefix.compare(stop_logging_msg)!=0) {
                 char timestamp_buf[256];
                 // sprintf(timestamp_buf, "%06d\t%f\n", data_no, ros::Time::now().toSec());
-                sprintf(timestamp_buf, "%06d\t%f\n", data_no, time);
+                sprintf(timestamp_buf, "%.9f\t%06d\n", time, data_no);
 
                 fwrite(timestamp_buf, 1, strlen(timestamp_buf), ptr_time);
 
